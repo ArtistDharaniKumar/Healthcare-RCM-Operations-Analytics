@@ -1,0 +1,27 @@
+-- Title: Agent Performance & Training Needs Analysis
+-- Description: Joins daily production with roster data to isolate underperforming agents and recommend specific interventions.
+
+SELECT 
+    p.Date,
+    p.Agent_ID,
+    p.Process_Type,
+    p.Accounts_Worked,
+    p.AHT_Minutes,
+    p.Quality_Score_Pct,
+    r.Shrinkage_Hours,
+    -- The CASE statement builds automated business logic
+    CASE 
+        WHEN p.Quality_Score_Pct < 0.90 AND p.AHT_Minutes > 10 THEN 'Urgent: Workflow Retraining'
+        WHEN p.Quality_Score_Pct < 0.95 AND r.Shrinkage_Hours > 2 THEN 'Monitor: High Shrinkage / Low Quality'
+        WHEN p.Quality_Score_Pct < 0.95 THEN 'Action: Standard QA Review'
+        ELSE 'On Track'
+    END AS Leadership_Action_Plan
+FROM 
+    Agent_Performance_Log p
+JOIN 
+    Roster_and_Shrinkage r ON p.Agent_ID = r.Agent_ID AND p.Date = r.Date
+WHERE 
+    p.Quality_Score_Pct < 0.95 -- Only filtering for agents missing the 95% threshold
+ORDER BY 
+    p.Quality_Score_Pct ASC, 
+    r.Shrinkage_Hours DESC;
