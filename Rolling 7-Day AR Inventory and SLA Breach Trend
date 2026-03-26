@@ -1,0 +1,35 @@
+    -- Title: Rolling 7-Day AR Inventory and SLA Breach Trend
+-- Description: Utilizes a CTE and Window Functions to track backlog trends and flag SLA misses.
+
+WITH Daily_Inventory AS (
+    -- Step 1: Create the base dataset and flag breaches
+    SELECT 
+        Date,
+        Process_Type,
+        Ending_AR_Count,
+        Target_SLA_Days,
+        Actual_TAT_Days,
+        CASE 
+            WHEN Actual_TAT_Days > Target_SLA_Days THEN 1 
+            ELSE 0 
+        END AS SLA_Breach_Flag
+    FROM 
+        Inventory_and_SLA
+)
+-- Step 2: Apply the Window Function for the rolling average
+SELECT 
+    Date,
+    Process_Type,
+    Ending_AR_Count,
+    -- Calculates the average AR over the current day and the 6 previous days
+    ROUND(AVG(Ending_AR_Count) OVER (
+        PARTITION BY Process_Type 
+        ORDER BY Date 
+        ROWS BETWEEN 6 PRECEDING AND CURRENT ROW
+    ), 0) AS Rolling_7Day_Backlog,
+    SLA_Breach_Flag
+FROM 
+    Daily_Inventory
+ORDER BY 
+    Process_Type, 
+    Date;
